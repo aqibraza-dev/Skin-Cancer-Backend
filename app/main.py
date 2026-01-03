@@ -7,11 +7,12 @@ from app.pipeline import classifier
 
 app = FastAPI(title="Skin Cancer Detection API")
 
-# CORS - Allow React Frontend to connect
+# CORS - Update this list!
 origins = [
     "http://localhost:3000",
-    "http://localhost:5173",  # Vite default
-    "*"
+    "http://localhost:5173", 
+    "https://med-ai-pro.vercel.app",  # <--- CRITICAL: Your Vercel domain
+    "*"                               # Keep '*' only for testing, remove in strict prod
 ]
 
 app.add_middleware(
@@ -22,20 +23,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static assets (images for the frontend sample)
-# Ensure you create a folder named 'assets' in the root backend directory
 os.makedirs("assets", exist_ok=True)
 app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
 @app.get("/")
 def home():
-    return {"message": "Skin Cancer Detection API is running"}
+    return {
+        "message": "Skin Cancer Detection API is running",
+        "status": "active"
+    }
 
 @app.post("/predict")
 async def predict_skin_lesion(file: UploadFile = File(...)):
-    """
-    Accepts an image file and returns the predicted skin cancer class.
-    """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image.")
     
@@ -44,7 +43,9 @@ async def predict_skin_lesion(file: UploadFile = File(...)):
         result = classifier.predict(content)
         return result
     except Exception as e:
+        print(f"Error during prediction: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    # Use 'app' object directly for cleaner script execution
+    uvicorn.run(app, host="0.0.0.0", port=8000)
